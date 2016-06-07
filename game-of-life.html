@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Game of Life</title>
+  <style>
+    @keyframes rotate {
+      from {
+        transform: rotate(360deg)
+      }
+      to {
+        transform: rotate(0deg)
+      }
+    }
+    .container {
+      margin-top: 50px;
+      text-align: center;
+    }
+    .table {
+      width: 150px;
+      height: 150px;
+      border: 1px solid #CCC;
+      padding: 3px 0 0 3px;
+      display: inline-block;
+      box-shadow: 1px 1px 3px #AAA;
+      
+    }
+    .parameters {
+      display: inline-block;
+      vertical-align: top;
+    }
+    ul {
+      padding-left: 10px;
+    }
+    li {
+      list-style: none;
+      padding-bottom: 5px;
+    }
+    li label {
+      text-align: left;
+      display: inline-block;
+      width: 60px;
+    }
+    li input {
+      width: 70px;
+    }
+    #code {
+      width: 70px;
+      display: inline-block;
+      text-align: left;
+      padding: 0 2px;
+      white-space: nowrap;
+    }
+    .cell {
+      width: 10px;
+      height: 10px;
+      padding: 0;
+      margin: 0 3px 3px 0;
+      float: left;
+      border: 1px solid #CCC;
+      box-shadow: 1px 1px 3px #AAA;
+    }
+    .btn-group {
+      text-align: center;
+    }
+    button {
+      margin: 10px 7px;
+    }
+  </style>
+  <script src='jquery-1.8.3.min.js'></script>
+</head>
+<body>
+  <div class='container'>
+    <div class='table'></div>
+    <div class='parameters'>
+      <ul>
+        <li><label>code:</label><labe id='code'></labe></li>
+        <li><label>width:</label><input id='width' type='text' value='10'></li>
+        <li><label>height:</label><input id='height' type='text' value='10'></li>
+        <li><label>seeds:</label><input id='occupancy' type='text' value='0.5'></li>
+        <li><label>Border:</label><input id='border' type='checkbox'></li>
+        <li><input id='confirm' type='button' value='confirm'></li>
+      </ul>
+    </div>
+    <div class='btn-group'>
+      <button id='clear'>clear</button><button id='seed'>seed</button><button id='step'>step</button><button id='auto'>auto</button>
+    </div>
+  </div>
+  <script>
+    $(document).ready(function () {
+      
+      /********* init *********/
+      // var metrics = 64;
+      var width = 10;
+      var height = 10;
+      var seedRate = 0.5;
+      var autoTime = 1000;
+      var pointer = 0;
+      var same = false;
+      var code = '';
+      var total = width * height;
+      var seeds = parseInt(seedRate * total);
+      var border = true;
+
+
+      
+      /********* function **********/
+      function initTable() {
+        width = $('#width').val();
+        height = $('#height').val();
+        seedRate = $('#occupancy').val();
+        $('.table').css('width', width * 15);
+        $('.table').css('height', height * 15);
+        total = width * height;
+        seeds = parseInt(seedRate * total);
+        
+        $('.table').html('');
+        for (var i = 1; i <= width; i++) {
+          $('.table').append("<div id='row" + i + "'></div>");
+          for (var j = 1; j <= height; j++) {
+            $('#row' + i).append("<div class='cell'></div>");
+          }
+        }
+        $('.cell').val('x');
+        $('.cell').click(cellClick);
+        getCode();        
+      }
+      function clean() {
+        $('.cell').val('x');
+        $('.cell').css('background-color', 'transparent');
+      }
+
+      function checkAlive() {
+        border = $('#border').attr('checked') === 'checked';
+        var point;        
+        for (var i = 1; i <= width; i++) {
+          for (var j = 1; j <= height; j++) {
+            point = 0;            
+            if (border) {
+              if (i > 1 && j > 1 && $('#row' + (i - 1) + ' .cell:nth-child(' + (j - 1) + ')').val().charAt(0) === 'o') point++;
+              if (i > 1 && $('#row' + (i - 1) + ' .cell:nth-child(' + j + ')').val().charAt(0) === 'o') point++;
+              if (i > 1 && j < height && $('#row' + (i - 1) + ' .cell:nth-child(' + (j + 1) + ')').val().charAt(0) === 'o') point++;
+              if (j > 1 && $('#row' + i + ' .cell:nth-child(' + (j - 1) + ')').val().charAt(0) === 'o') point++;
+              if (j < height && $('#row' + i + ' .cell:nth-child(' + (j + 1) + ')').val().charAt(0) === 'o') point++;
+              if (i < width && j > 1 && $('#row' + (i + 1) + ' .cell:nth-child(' + (j - 1) + ')').val().charAt(0) === 'o') point++;
+              if (i < width && $('#row' + (i + 1) + ' .cell:nth-child(' + j + ')').val().charAt(0) === 'o') point++;
+              if (i < width && j < height && $('#row' + (i + 1) + ' .cell:nth-child(' + (j + 1) + ')').val().charAt(0) === 'o') point++;
+            } else {
+              var i1, i2, j1, j2;              
+              i1 = i > 1 ? i - 1 : width;
+              i2 = i < width ? i + 1 : 1;
+              j1 = j > 1 ? j - 1 : height;
+              j2 = j < height ? j + 1 : 1;
+              if($('#row' + i1 + ' .cell:nth-child(' + j1 + ')').val().charAt(0) === 'o') point++;
+              if($('#row' + i1 + ' .cell:nth-child(' + j + ')').val().charAt(0) === 'o') point++;
+              if($('#row' + i1 + ' .cell:nth-child(' + j2 + ')').val().charAt(0) === 'o') point++;
+              if($('#row' + i + ' .cell:nth-child(' + j1 + ')').val().charAt(0) === 'o') point++;
+              if($('#row' + i + ' .cell:nth-child(' + j2 + ')').val().charAt(0) === 'o') point++;
+              if($('#row' + i2 + ' .cell:nth-child(' + j1 + ')').val().charAt(0) === 'o') point++;
+              if($('#row' + i2 + ' .cell:nth-child(' + j + ')').val().charAt(0) === 'o') point++;
+              if($('#row' + i2 + ' .cell:nth-child(' + j2 + ')').val().charAt(0) === 'o') point++;
+            }
+
+
+
+            
+            if (point === 3) {
+              point = 'o';
+            } else if (point === 2) {
+              point = $('#row' + i + ' .cell:nth-child(' + j + ')').val().charAt(0);
+            } else {
+              point = 'x';
+            }
+            $('#row' + i + ' .cell:nth-child(' + j + ')').val($('#row' + i + ' .cell:nth-child(' + j + ')').val() + point);
+          }
+        }
+      }
+
+      function step() {
+        same = true;
+        for (var i = 1; i <= width; i++) {
+          for (var j = 1; j <= height; j++) {
+            var targetId = '#row' + i + ' .cell:nth-child(' + j + ')';
+            if ($(targetId).val().charAt(1) !== $(targetId).val().charAt(0)) {same = false;
+            }
+            $(targetId).val($(targetId).val().charAt(1));      
+            if ($(targetId).val() === 'o') {
+              $(targetId).css('background-color', '#F47D31');
+            } else {
+              $(targetId).css('background-color', 'transparent');
+            }
+          }
+        }
+        if (same === false) {
+          pointer++;
+        }
+        getCode();
+      }
+      
+      function autoStep() {
+        setTimeout( function () {
+          checkAlive();
+          step();
+          if (same) {
+            $('#auto').text('auto');
+          }
+          if ($('#auto').text() === 'stop') {
+            autoStep();
+          } else {
+            $('#clear').attr('disabled', false);
+            $('#seed').attr('disabled', false);
+            $('#step').attr('disabled', false);
+            $('input').attr('disabled', false);
+            $('.table').css('animation', 'none');
+            alert('Your pet has been alive for ' + pointer + ' days.');
+          }
+        }, autoTime);
+      }
+
+      function get64(number) {
+        if (number < 10) {
+          return String.fromCharCode(48 + number);
+        } else if (number < 36) {
+          return String.fromCharCode(55 + number);
+        } else if (number < 62) {
+          return String.fromCharCode(61 + number);
+        } else if (number === 62) {
+          return '-';
+        } else {
+          return '+';
+        }
+      }
+
+      function to64(number) {
+        var r = '';
+        while (number > 0) {
+          r += get64(number % 64);
+          number = parseInt(number / 64);          
+        }
+        return r;
+      }
+
+      function getCode() {
+        code = '';
+        var count = 0;
+        var r = 0;
+        for(var i = 1; i <= width; i++) {
+          for(var j = 1; j <= height; j++) {
+            r = r << 1;
+            if ($('#row' + i + ' .cell:nth-child(' + j + ')').val() === 'o') {
+              r += 1;
+            }
+            if (++count === 6) {              
+              count = 0;
+              code += get64(r);
+
+              r = 0;
+            }
+          }
+        }
+        if (count > 0) {
+          code += get64(r);
+        }        
+        code += '*' + to64(parseInt(width)) + '*' + to64(parseInt(height));
+        $('#code').text(code);
+      }
+      /********* click event **********/
+      function cellClick() {
+        if ($(this).val() !== 'o') {
+          $(this).val('o');
+          $(this).css('background-color', '#F47D31');          
+        } else {
+          $(this).val('x');
+          $(this).css('background-color', 'transparent');          
+        }
+      }
+
+      /* setting ********/
+      $('#confirm').click(function () {
+        initTable();
+      });
+
+
+      /* control button ********/
+      $('#clear').click(function () {
+        clean();
+      });
+
+      $('#seed').click(function () {
+        clean();
+
+        var source = new Array();
+        var target = new Array();
+        for (var i = 0; i < total; i++) {
+          source[i] = i + 1;
+        }
+
+        for (var i = 0; i < seeds; i++) {
+          var targetCell = parseInt(Math.random() * (total - i));
+          var cell = source[targetCell];          
+          var row = parseInt(cell / height) + 1;
+          var col = cell % height + 1;
+          var targetId = '#row' + row + ' .cell:nth-child(' + col + ')';
+
+          $(targetId).val('o');
+          $(targetId).css('background-color', '#F47D31');
+          source.splice(targetCell, 1);
+        }
+        getCode();
+      });
+
+      $('#step').click(function () {
+        $('#clear').attr('disabled', true);
+        $('#seed').attr('disabled', true);
+        $('#auto').attr('disabled', true);
+        $('input').attr('disabled', true);
+        $('.table').css('animation', 'rotate 3s linear infinite');
+        checkAlive();
+        step();
+        $('#clear').attr('disabled', false);
+        $('#seed').attr('disabled', false);
+        $('#auto').attr('disabled', false);
+        $('input').attr('disabled', false);
+        $('.table').css('animation', 'none');
+      });
+
+      $('#auto').click(function () {
+        if ($(this).text() === 'auto') {
+          $(this).text('stop');
+          $('#clear').attr('disabled', true);
+          $('#seed').attr('disabled', true);
+          $('#step').attr('disabled', true);
+          $('input').attr('disabled', true);
+          $('.table').css('animation', 'rotate 3s linear infinite');
+          checkAlive();
+          step();
+          pointer = 1;
+          autoStep();
+        } else {
+          $(this).text('auto');
+        }
+      });
+
+
+      initTable();
+    });
+  </script>
+</body>
+</html>
